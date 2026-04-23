@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Presensi QR</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- FAVICON -->
+  <link rel="icon" href="logoki.png" type="image/jpeg">
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 16px;
+      text-align: center;
+      background: #f5f5f5;
+    }
+
+    h2 {
+      font-size: 24px;
+    }
+
+    #reader {
+      width: 100% !important;
+      max-width: 400px;
+      margin: auto;
+    }
+
+    #status {
+      font-size: 18px;
+      margin-top: 20px;
+      font-weight: bold;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>SCAN QR PRESENSI</h2>
+
+<div id="reader"></div>
+
+<p id="status">Siap scan QR Code...</p>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxcJAorMq7vgNrMM8h4294jtWLnaekB6mqXP3RGDDQAAbybp339c8GZGX6pxUH09RmCeQ/exec";
+
+const scannedData = new Set();
+const qrRegex = /^\s*\d{8}\s\d{6}\s\d{4}\s*$/;
+
+async function kirimKeSheet(id) {
+  await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({ id: id })
+  });
+}
+
+// Menambahkan suara beep
+const beepSound = new Audio('scanberhasil.mp3'); // Ganti dengan lokasi file audio beep kamu
+
+async function onScanSuccess(text) {
+
+  if (!qrRegex.test(text)) {
+    document.getElementById("status").innerText = "❌ QR tidak valid";
+    return;
+  }
+
+  if (scannedData.has(text)) {
+    document.getElementById("status").innerText = "👍🏻 Scan Berhasil";
+    return;
+  }
+
+  scannedData.add(text);
+
+  document.getElementById("status").innerText = "⏳ Mengirim...";
+
+  try {
+    await kirimKeSheet(text);
+
+    // Mainkan suara beep saat scan berhasil
+    beepSound.play();
+
+    document.getElementById("status").innerText =
+      "TEKS " + text + " BERHASIL DIKIRIM, SIAP SCAN QRCODE SELANJUTNYA";
+
+    // Auto-reset setelah 3 detik
+    setTimeout(() => {
+      document.getElementById("status").innerText = "Siap scan QR Code...";
+      scanner.start(
+        { facingMode: "environment" }, // mengaktifkan kamera belakang lagi
+        { fps: 10, qrbox: 250 }, // set fps dan ukuran kotak scan
+        onScanSuccess // callback jika berhasil scan
+      );
+    }, 3000); // reset scanner setelah 3 detik
+  } catch (e) {
+    document.getElementById("status").innerText = "❌ GAGAL KIRIM";
+  }
+}
+
+const scanner = new Html5Qrcode("reader");
+
+scanner.start(
+  { facingMode: "environment" },
+  {
+    fps: 10,
+    qrbox: 250
+  },
+  onScanSuccess
+);
+</script>
+
+</body>
+</html>
