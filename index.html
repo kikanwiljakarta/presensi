@@ -47,10 +47,10 @@
 <p id="status">Siap scan QR Code...</p>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzb0-H74Fm5aAvMsV_YMO9LnPF4KbYQzrtQmvoyC5Nv/dev";
+const API_URL = "https://script.google.com/macros/s/AKfycbxcJAorMq7vgNrMM8h4294jtWLnaekB6mqXP3RGDDQAAbybp339c8GZGX6pxUH09RmCeQ/exec";
 
 const scannedData = new Set();
-const qrRegex = /^\s*\d{8}\s\d{6}\s\d{4}\s*$/;
+const qrRegex = /^\s*\d{18}\s*$/;
 
 async function kirimKeSheet(id) {
   await fetch(API_URL, {
