@@ -73,11 +73,14 @@
         <button type="button" class="btn" onclick="ambilFoto()">Shutter (Jepret)</button>
     </div>
 
-    <!-- Area Hasil Foto -->
-    <div id="resultArea">
-        <img id="hasilFoto" alt="Hasil Selfie">
-        <button type="button" class="btn btn-success" id="btnKirim" onclick="kirimData()">KIRIM DATA</button>
-    </div>
+	<!-- Area Hasil Foto -->
+	<div id="resultArea">
+		<img id="hasilFoto" alt="Hasil Selfie">
+		<div style="display: flex; gap: 10px; margin-top: 10px;">
+			<button type="button" class="btn" style="background-color: #6c757d;" onclick="fotoUlang()">FOTO ULANG</button>
+			<button type="button" class="btn btn-success" id="btnKirim" onclick="kirimData()">KIRIM DATA</button>
+		</div>
+	</div>
 
     <canvas id="canvas" style="display:none;"></canvas>
     <div class="status" id="statusPesan"></div>
@@ -206,6 +209,10 @@
 		document.getElementById('resultArea').style.display = 'block';
 	}
 
+	function fotoUlang() {
+		document.getElementById('resultArea').style.display = 'none';
+		bukaKamera();
+	}
 
     function validasiForm() {
         if (!namaInput.value.trim()) { alert('Silakan isi Nama Anda!'); return false; }
