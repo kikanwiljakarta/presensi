@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presensi Selfie</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .container { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h2, h3 { text-align: center; color: #333; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background-color: #fff; }
+        small { color: #888; font-size: 11px; }
+        .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.3s; }
+        .btn:hover { background-color: #0056b3; }
+        .btn-success { background-color: #28a745; }
+        .btn-success:hover { background-color: #218838; }
+        #cameraArea, #resultArea { display: none; text-align: center; margin-top: 15px; }
+        video, canvas, img { width: 100%; max-width: 100%; border-radius: 8px; border: 1px solid #ddd; }
+        .status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; }
+
+        /* Style Tabel & Pencarian */
+        .section-table { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        .search-box { margin-bottom: 15px; }
+        
+        /* Badges Rekapitulasi Bidang */
+        .stats-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+        .stat-badge { background: #e9ecef; border: 1px solid #ced4da; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #495057; }
+        .stat-badge span { color: #007bff; font-weight: 800; margin-left: 3px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        table th { background-color: #f8f9fa; color: #333; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Presensi Selfie</h2>
+    
+    <div class="form-group">
+        <label for="nama">Nama Lengkap</label>
+        <input type="text" id="nama" placeholder="Masukkan nama lengkap">
+    </div>
+
+    <!-- Dropdown Bidang/Bagian -->
+    <div class="form-group">
+        <label for="bidang">Bidang / Bagian</label>
+        <select id="bidang">
+            <option value="">-- Pilih Bidang / Bagian --</option>
+            <option value="Audit">Audit</option>
+            <option value="Fasilitas">Fasilitas</option>
+            <option value="KC">KC</option>
+            <option value="KI">KI</option>
+            <option value="P2">P2</option>
+            <option value="Umum">Umum</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="nip">NIP</label>
+        <input type="text" id="nip" maxlength="18" placeholder="Masukkan 18 digit NIP">
+        <small>Isi NIP berupa 18 digit angka, tanpa spasi.</small>
+    </div>
+
+    <button type="button" class="btn" id="btnBukaKamera" onclick="bukaKamera()">AMBIL FOTO SELFIE</button>
+
+    <!-- Area Video Kamera -->
+    <div id="cameraArea">
+        <video id="webcam" autoplay playsinline></video>
+        <button type="button" class="btn" onclick="ambilFoto()">Shutter (Jepret)</button>
+    </div>
+
+    <!-- Area Hasil Foto -->
+    <div id="resultArea">
+        <img id="hasilFoto" alt="Hasil Selfie">
+        <button type="button" class="btn btn-success" id="btnKirim" onclick="kirimData()">KIRIM DATA</button>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+    <div class="status" id="statusPesan"></div>
+
+    <!-- Section Tabel User & Statistik -->
+    <div class="section-table">
+        <h3>Daftar Yang Telah Presensi</h3>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Cari berdasarkan nama atau NIP..." oninput="filterData()">
+        </div>
+
+        <!-- Ringkasan Statistik Jumlah Per Bidang -->
+        <div class="stats-container" id="statsContainer">
+            <div class="stat-badge">Audit: <span id="stat-Audit">0</span></div>
+            <div class="stat-badge">Fasilitas: <span id="stat-Fasilitas">0</span></div>
+            <div class="stat-badge">KC: <span id="stat-KC">0</span></div>
+            <div class="stat-badge">KI: <span id="stat-KI">0</span></div>
+            <div class="stat-badge">P2: <span id="stat-P2">0</span></div>
+            <div class="stat-badge">Umum: <span id="stat-Umum">0</span></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 10%;">No</th>
+                    <th>Nama</th>
+                    <th>Bidang</th>
+                    <th>NIP</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // GANTI DENGAN URL WEB APP & SPREADSHEET ID ANDA
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6LzLtKjg9HHqlUxswfrojKSfE6kV0MgFwQj5x6Ic3TcO4LFiOaY3rrlEFLJrWBOkr/exec';
+    const SPREADSHEET_ID = '1LE0kJCm80R1AaHc14FWfw7S-fUIy5clVYtQ9Ovr4ipA'; 
+    const SHEET_NAME = 'sidak';
+
+    const nipInput = document.getElementById('nip');
+    const namaInput = document.getElementById('nama');
+    const bidangInput = document.getElementById('bidang');
+    let fotoDataBase64 = '';
+    let dataUserGlobal = [];
+
+    window.onload = function() {
+        if (localStorage.getItem('saved_nama')) namaInput.value = localStorage.getItem('saved_nama');
+        if (localStorage.getItem('saved_bidang')) bidangInput.value = localStorage.getItem('saved_bidang');
+        if (localStorage.getItem('saved_nip')) nipInput.value = localStorage.getItem('saved_nip');
+        
+        muatDataUser();
+    };
+
+    nipInput.addEventListener('keydown', (e) => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); });
+    nipInput.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
+    
+    namaInput.addEventListener('input', () => localStorage.setItem('saved_nama', namaInput.value));
+    bidangInput.addEventListener('change', () => localStorage.setItem('saved_bidang', bidangInput.value));
+    nipInput.addEventListener('input', () => localStorage.setItem('saved_nip', nipInput.value));
+
+	async function bukaKamera() {
+		if (!validasiForm()) return;
+
+		// Cek apakah NIP sudah ada di dalam dataUserGlobal (Daftar Yang Telah Presensi)
+		const nipInputVal = nipInput.value.trim();
+		const sudahPresensi = dataUserGlobal.some(item => String(item.nip).trim() === nipInputVal);
+
+		if (sudahPresensi) {
+			alert('NIP telah ada di Daftar Yang Telah Presensi');
+			return; // Batalkan aksi
+		}
+
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+			const video = document.getElementById('webcam');
+			video.srcObject = stream;
+			document.getElementById('cameraArea').style.display = 'block';
+			document.getElementById('btnBukaKamera').style.display = 'none';
+			document.getElementById('statusPesan').innerText = '';
+		} catch (err) {
+			alert('Gagal mengakses kamera depan: ' + err.message);
+		}
+	}
+	
+
+	function ambilFoto() {
+		const video = document.getElementById('webcam');
+		const canvas = document.getElementById('canvas');
+		const context = canvas.getContext('2d');
+
+		// Tentukan batas lebar maksimal (1366px setara layar 14 inch standar)
+		const maxDimension = 1366; 
+		let width = video.videoWidth;
+		let height = video.videoHeight;
+
+		// Kecilkan resolusi jika melebihi maxDimension dengan menjaga rasio gambar
+		if (width > maxDimension || height > maxDimension) {
+			if (width > height) {
+				height = Math.round((height * maxDimension) / width);
+				width = maxDimension;
+			} else {
+				width = Math.round((width * maxDimension) / height);
+				height = maxDimension;
+			}
+		}
+
+		canvas.width = width;
+		canvas.height = height;
+
+		// Gambar ulang video ke canvas dengan ukuran yang sudah disesuaikan
+		context.drawImage(video, 0, 0, width, height);
+
+		// Kompresi kualitas gambar ke JPEG dengan kualitas 0.7 (70%) agar file ringan
+		fotoDataBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+		const stream = video.srcObject;
+		if (stream) stream.getTracks().forEach(track => track.stop());
+
+		document.getElementById('hasilFoto').src = fotoDataBase64;
+		document.getElementById('cameraArea').style.display = 'none';
+		document.getElementById('resultArea').style.display = 'block';
+	}
+
+
+    function validasiForm() {
+        if (!namaInput.value.trim()) { alert('Silakan isi Nama Anda!'); return false; }
+        if (!bidangInput.value) { alert('Silakan pilih Bidang / Bagian!'); return false; }
+        if (nipInput.value.length !== 18) { alert('NIP harus tepat 18 digit angka!'); return false; }
+        return true;
+    }
+
+    function kirimData() {
+        const statusDiv = document.getElementById('statusPesan');
+        statusDiv.style.color = 'blue';
+        statusDiv.innerText = 'Memeriksa...';
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    prosesKirim(lat, lng);
+                },
+                (error) => {
+                    alert('Silakan aktifkan dan izinkan akses lokasi pada browser Anda untuk melanjutkan.');
+                    statusDiv.innerText = '';
+                }
+            );
+        } else {
+            alert('Perangkat Anda tidak mendukung fitur Geolocation GPS.');
+            statusDiv.innerText = '';
+        }
+    }
+
+    function prosesKirim(latitude, longitude) {
+        const statusDiv = document.getElementById('statusPesan');
+        statusDiv.innerText = 'Mengirim data...';
+        document.getElementById('btnKirim').disabled = true;
+
+        const payload = {
+            nama: namaInput.value,
+            bidang: bidangInput.value,
+            nip: nipInput.value,
+            foto: fotoDataBase64,
+            tanggal: new Date().toLocaleString('id-ID'),
+            lokasi: `${latitude}, ${longitude}`
+        };
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            statusDiv.style.color = 'green';
+            statusDiv.innerText = 'Data berhasil dikirim!';
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('btnBukaKamera').style.display = 'block';
+            document.getElementById('btnKirim').disabled = false;
+            
+            setTimeout(muatDataUser, 2000);
+        })
+        .catch(err => {
+            statusDiv.style.color = 'red';
+            statusDiv.innerText = 'Gagal mengirim data: ' + err.message;
+            document.getElementById('btnKirim').disabled = false;
+        });
+    }
+
+
+
+	function muatDataUser() {
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+
+        fetch(url)
+            .then(res => res.text())
+            .then(rep => {
+                const jsonString = rep.substring(47, rep.length - 2);
+                const data = JSON.parse(jsonString);
+                
+                const rows = data.table.rows;
+                dataUserGlobal = [];
+
+                // Ambil mulai dari baris kedua (indeks 1)
+                const targetRows = rows.slice(1);
+
+                targetRows.forEach(row => {
+                    if(row.c) {
+                        let nama = row.c[0] ? row.c[0].v : '';
+                        let bidang = row.c[1] ? row.c[1].v : '';
+                        let nip = row.c[2] ? String(row.c[2].v) : '';
+
+                        // Hilangkan awalan tanda petik ' jika ada
+                        if (nama.startsWith("'")) nama = nama.substring(1);
+                        if (bidang.startsWith("'")) bidang = bidang.substring(1);
+                        if (nip.startsWith("'")) nip = nip.substring(1);
+
+                        if (nama || nip) {
+                            dataUserGlobal.push({ nama, bidang, nip });
+                        }
+                    }
+                });
+
+                // Balikkan urutan array agar data paling bawah berada di paling atas
+                dataUserGlobal.reverse();
+
+                hitungStatistikBidang(dataUserGlobal);
+                tampilkanTabel(dataUserGlobal);
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Gagal memuat data.</td></tr>';
+            });
+    }
+
+	
+    function hitungStatistikBidang(data) {
+        const hitungan = { Audit: 0, Fasilitas: 0, KC: 0, KI: 0, P2: 0, Umum: 0 };
+
+        data.forEach(item => {
+            if (hitungan.hasOwnProperty(item.bidang)) {
+                hitungan[item.bidang]++;
+            }
+        });
+
+        Object.keys(hitungan).forEach(key => {
+            const el = document.getElementById(`stat-${key}`);
+            if (el) el.innerText = hitungan[key];
+        });
+    }
+
+
+    function tampilkanTabel(data) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada data ditemukan.</td></tr>';
+            return;
+        }
+
+        data.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${item.nama}</td>
+                <td>${item.bidang || '-'}</td>
+                <td>${item.nip}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+
+    function calculateSimilarity(str1, str2) {
+        const s1 = str1.toLowerCase();
+        const s2 = str2.toLowerCase();
+        if (s1.includes(s2) || s2.includes(s1)) return 1;
+
+        const track = Array(s2.length + 1).fill(null).map(() => Array(s1.length + 1).fill(null));
+        for (let i = 0; i <= s1.length; i += 1) track[0][i] = i;
+        for (let j = 0; j <= s2.length; j += 1) track[j][0] = j;
+
+        for (let j = 1; j <= s2.length; j += 1) {
+            for (let i = 1; i <= s1.length; i += 1) {
+                const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                track[j][i] = Math.min(
+                    track[j][i - 1] + 1,
+                    track[j - 1][i] + 1,
+                    track[j - 1][i - 1] + indicator
+                );
+            }
+        }
+        const distance = track[s2.length][s1.length];
+        const maxLength = Math.max(s1.length, s2.length);
+        return maxLength === 0 ? 1 : (maxLength - distance) / maxLength;
+    }
+
+    function filterData() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) {
+            tampilkanTabel(dataUserGlobal);
+            return;
+        }
+
+        const filtered = dataUserGlobal.filter(item => {
+            const simNama = calculateSimilarity(item.nama, query);
+            const simNip = calculateSimilarity(item.nip, query);
+            
+            return simNama >= 0.6 || simNip >= 0.6;
+        });
+
+        tampilkanTabel(filtered);
+    }
+</script>
+
+</body>
+</html>
