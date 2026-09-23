@@ -323,9 +323,37 @@
     }
 
     function validasiForm() {
-        if (!namaInput.value.trim()) { alert('Silakan isi Nama Anda!'); return false; }
-        if (!bidangInput.value) { alert('Silakan pilih Bidang / Bagian!'); return false; }
-        if (nipInput.value.length !== 18) { alert('NIP harus tepat 18 digit angka!'); return false; }
+        const inputNama = namaInput.value.trim().toLowerCase();
+        const inputNip = nipInput.value.trim();
+
+        if (!inputNama) { 
+            alert('Silakan isi Nama Anda!'); 
+            return false; 
+        }
+        if (!bidangInput.value) { 
+            alert('Silakan pilih Bidang / Bagian!'); 
+            return false; 
+        }
+        if (inputNip.length !== 18) { 
+            alert('NIP harus tepat 18 digit angka!'); 
+            return false; 
+        }
+
+        // Cek jika dataMasterPegawai belum siap/selesai ditarik dari spreadsheet
+        if (!dataMasterPegawai || dataMasterPegawai.length === 0) {
+            alert('Data master pegawai sedang dimuat, silakan tunggu beberapa detik dan coba lagi.');
+            return false;
+        }
+
+        // Memeriksa keberadaan Nama dan NIP di dataMasterPegawai
+        const namaSesuai = dataMasterPegawai.some(item => item.nama.trim().toLowerCase() === inputNama);
+        const nipSesuai = dataMasterPegawai.some(item => item.nip.trim() === inputNip);
+
+        if (!namaSesuai || !nipSesuai) {
+            alert('Nama atau NIP tidak terdaftar.');
+            return false;
+        }
+
         return true;
     }
 
