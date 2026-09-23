@@ -40,9 +40,11 @@
 <div class="container">
     <h2>Presensi Selfie</h2>
     
+    <!-- Input Nama Lengkap dengan Datalist -->
     <div class="form-group">
         <label for="nama">Nama Lengkap</label>
-        <input type="text" id="nama" placeholder="Masukkan nama lengkap">
+        <input type="text" id="nama" list="listNama" placeholder="Masukkan nama lengkap">
+        <datalist id="listNama"></datalist>
     </div>
 
     <!-- Dropdown Bidang/Bagian -->
@@ -59,9 +61,11 @@
         </select>
     </div>
 
+    <!-- Input NIP dengan Datalist -->
     <div class="form-group">
         <label for="nip">NIP</label>
-        <input type="text" id="nip" maxlength="18" placeholder="Masukkan 18 digit NIP">
+        <input type="text" id="nip" list="listNip" maxlength="18" placeholder="Masukkan 18 digit NIP">
+        <datalist id="listNip"></datalist>
         <small>Isi NIP berupa 18 digit angka, tanpa spasi.</small>
     </div>
 
@@ -73,14 +77,14 @@
         <button type="button" class="btn" onclick="ambilFoto()">Shutter (Jepret)</button>
     </div>
 
-	<!-- Area Hasil Foto -->
-	<div id="resultArea">
-		<img id="hasilFoto" alt="Hasil Selfie">
-		<div style="display: flex; gap: 10px; margin-top: 10px;">
-			<button type="button" class="btn" style="background-color: #6c757d;" onclick="fotoUlang()">FOTO ULANG</button>
-			<button type="button" class="btn btn-success" id="btnKirim" onclick="kirimData()">KIRIM DATA</button>
-		</div>
-	</div>
+    <!-- Area Hasil Foto -->
+    <div id="resultArea">
+        <img id="hasilFoto" alt="Hasil Selfie">
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button type="button" class="btn" style="background-color: #6c757d;" onclick="fotoUlang()">FOTO ULANG</button>
+            <button type="button" class="btn btn-success" id="btnKirim" onclick="kirimData()">KIRIM DATA</button>
+        </div>
+    </div>
 
     <canvas id="canvas" style="display:none;"></canvas>
     <div class="status" id="statusPesan"></div>
@@ -120,7 +124,7 @@
 </div>
 
 <script>
-    // GANTI DENGAN URL WEB APP & SPREADSHEET ID ANDA
+    // CONFIGURASI GOOGLE SPREADSHEET & APPS SCRIPT
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6LzLtKjg9HHqlUxswfrojKSfE6kV0MgFwQj5x6Ic3TcO4LFiOaY3rrlEFLJrWBOkr/exec';
     const SPREADSHEET_ID = '1LE0kJCm80R1AaHc14FWfw7S-fUIy5clVYtQ9Ovr4ipA'; 
     const SHEET_NAME = 'sidak';
@@ -128,15 +132,18 @@
     const nipInput = document.getElementById('nip');
     const namaInput = document.getElementById('nama');
     const bidangInput = document.getElementById('bidang');
+    
     let fotoDataBase64 = '';
-    let dataUserGlobal = [];
+    let dataUserGlobal = [];     // Menampung rekap presensi (sheet "sidak")
+    let dataMasterPegawai = [];  // Menampung data master pegawai (sheet "data")
 
     window.onload = function() {
         if (localStorage.getItem('saved_nama')) namaInput.value = localStorage.getItem('saved_nama');
         if (localStorage.getItem('saved_bidang')) bidangInput.value = localStorage.getItem('saved_bidang');
         if (localStorage.getItem('saved_nip')) nipInput.value = localStorage.getItem('saved_nip');
         
-        muatDataUser();
+        muatMasterPegawai(); // Muat data master dari sheet "data"
+        muatDataUser();       // Muat data rekap presensi dari sheet "sidak"
     };
 
     nipInput.addEventListener('keydown', (e) => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); });
@@ -146,73 +153,174 @@
     bidangInput.addEventListener('change', () => localStorage.setItem('saved_bidang', bidangInput.value));
     nipInput.addEventListener('input', () => localStorage.setItem('saved_nip', nipInput.value));
 
-	async function bukaKamera() {
-		if (!validasiForm()) return;
+    // EVENT LISTENER 1: Auto-fill saat mengetik/memilih Nama lalu berpindah fokus
+    namaInput.addEventListener('change', function() {
+        const inputNama = this.value.trim().toLowerCase();
+        if (!inputNama) return;
 
-		// Cek apakah NIP sudah ada di dalam dataUserGlobal (Daftar Yang Telah Presensi)
-		const nipInputVal = nipInput.value.trim();
-		const sudahPresensi = dataUserGlobal.some(item => String(item.nip).trim() === nipInputVal);
+        const pegawai = dataMasterPegawai.find(item => item.nama.trim().toLowerCase() === inputNama);
 
-		if (sudahPresensi) {
-			alert('NIP telah ada di Daftar Yang Telah Presensi');
-			return; // Batalkan aksi
-		}
+        if (pegawai) {
+            if (pegawai.nip) {
+                nipInput.value = pegawai.nip;
+                localStorage.setItem('saved_nip', pegawai.nip);
+            }
+            if (pegawai.bidang) {
+                bidangInput.value = pegawai.bidang;
+                localStorage.setItem('saved_bidang', pegawai.bidang);
+            }
+        }
+    });
 
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-			const video = document.getElementById('webcam');
-			video.srcObject = stream;
-			document.getElementById('cameraArea').style.display = 'block';
-			document.getElementById('btnBukaKamera').style.display = 'none';
-			document.getElementById('statusPesan').innerText = '';
-		} catch (err) {
-			alert('Gagal mengakses kamera depan: ' + err.message);
-		}
-	}
-	
+    // EVENT LISTENER 2: Auto-fill saat mengetik/memilih NIP lalu berpindah fokus
+    nipInput.addEventListener('change', function() {
+        const inputNip = this.value.trim();
+        if (!inputNip) return;
 
-	function ambilFoto() {
-		const video = document.getElementById('webcam');
-		const canvas = document.getElementById('canvas');
-		const context = canvas.getContext('2d');
+        const pegawai = dataMasterPegawai.find(item => item.nip.trim() === inputNip);
 
-		// Tentukan batas lebar maksimal (1366px setara layar 14 inch standar)
-		const maxDimension = 1366; 
-		let width = video.videoWidth;
-		let height = video.videoHeight;
+        if (pegawai) {
+            if (pegawai.nama) {
+                namaInput.value = pegawai.nama;
+                localStorage.setItem('saved_nama', pegawai.nama);
+            }
+            if (pegawai.bidang) {
+                bidangInput.value = pegawai.bidang;
+                localStorage.setItem('saved_bidang', pegawai.bidang);
+            }
+        }
+    });
 
-		// Kecilkan resolusi jika melebihi maxDimension dengan menjaga rasio gambar
-		if (width > maxDimension || height > maxDimension) {
-			if (width > height) {
-				height = Math.round((height * maxDimension) / width);
-				width = maxDimension;
-			} else {
-				width = Math.round((width * maxDimension) / height);
-				height = maxDimension;
-			}
-		}
+    // FUNGSI TARIK DATA MASTER DARI SHEET "data"
+    function muatMasterPegawai() {
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=data`;
 
-		canvas.width = width;
-		canvas.height = height;
+        fetch(url)
+            .then(res => res.text())
+            .then(rep => {
+                const jsonString = rep.substring(47, rep.length - 2);
+                const data = JSON.parse(jsonString);
+                
+                const rows = data.table.rows;
+                dataMasterPegawai = [];
 
-		// Gambar ulang video ke canvas dengan ukuran yang sudah disesuaikan
-		context.drawImage(video, 0, 0, width, height);
+                rows.slice(1).forEach(row => {
+                    if(row.c) {
+                        let nama = row.c[0] ? String(row.c[0].v) : '';
+                        let bidang = row.c[1] ? String(row.c[1].v) : '';
+                        let nip = row.c[2] ? String(row.c[2].v) : '';
 
-		// Kompresi kualitas gambar ke JPEG dengan kualitas 0.7 (70%) agar file ringan
-		fotoDataBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        if (nama.startsWith("'")) nama = nama.substring(1);
+                        if (bidang.startsWith("'")) bidang = bidang.substring(1);
+                        if (nip.startsWith("'")) nip = nip.substring(1);
 
-		const stream = video.srcObject;
-		if (stream) stream.getTracks().forEach(track => track.stop());
+                        if (nama || nip) {
+                            dataMasterPegawai.push({ nama, bidang, nip });
+                        }
+                    }
+                });
 
-		document.getElementById('hasilFoto').src = fotoDataBase64;
-		document.getElementById('cameraArea').style.display = 'none';
-		document.getElementById('resultArea').style.display = 'block';
-	}
+                // Isi rekomendasi saran pada input Nama & NIP
+                updateDatalistNama(dataMasterPegawai);
+                updateDatalistNip(dataMasterPegawai);
+            })
+            .catch(err => console.error('Gagal memuat master pegawai:', err));
+    }
 
-	function fotoUlang() {
-		document.getElementById('resultArea').style.display = 'none';
-		bukaKamera();
-	}
+    // FUNGSI MENGISI DATALIST NAMA
+    function updateDatalistNama(data) {
+        const datalist = document.getElementById('listNama');
+        if (!datalist) return;
+        
+        datalist.innerHTML = '';
+        const namaUnik = [...new Set(data.map(item => item.nama))];
+        
+        namaUnik.forEach(nama => {
+            if (nama) {
+                const option = document.createElement('option');
+                option.value = nama;
+                datalist.appendChild(option);
+            }
+        });
+    }
+
+    // FUNGSI MENGISI DATALIST NIP
+    function updateDatalistNip(data) {
+        const datalist = document.getElementById('listNip');
+        if (!datalist) return;
+        
+        datalist.innerHTML = '';
+        const nipUnik = [...new Set(data.map(item => item.nip))];
+        
+        nipUnik.forEach(nip => {
+            if (nip) {
+                const option = document.createElement('option');
+                option.value = nip;
+                datalist.appendChild(option);
+            }
+        });
+    }
+
+    async function bukaKamera() {
+        if (!validasiForm()) return;
+
+        const nipInputVal = nipInput.value.trim();
+        const sudahPresensi = dataUserGlobal.some(item => String(item.nip).trim() === nipInputVal);
+
+        if (sudahPresensi) {
+            alert('NIP telah ada di Daftar Yang Telah Presensi');
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            const video = document.getElementById('webcam');
+            video.srcObject = stream;
+            document.getElementById('cameraArea').style.display = 'block';
+            document.getElementById('btnBukaKamera').style.display = 'none';
+            document.getElementById('statusPesan').innerText = '';
+        } catch (err) {
+            alert('Gagal mengakses kamera depan: ' + err.message);
+        }
+    }
+
+    function ambilFoto() {
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        const maxDimension = 1366; 
+        let width = video.videoWidth;
+        let height = video.videoHeight;
+
+        if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+                height = Math.round((height * maxDimension) / width);
+                width = maxDimension;
+            } else {
+                width = Math.round((width * maxDimension) / height);
+                height = maxDimension;
+            }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        context.drawImage(video, 0, 0, width, height);
+        fotoDataBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+        const stream = video.srcObject;
+        if (stream) stream.getTracks().forEach(track => track.stop());
+
+        document.getElementById('hasilFoto').src = fotoDataBase64;
+        document.getElementById('cameraArea').style.display = 'none';
+        document.getElementById('resultArea').style.display = 'block';
+    }
+
+    function fotoUlang() {
+        document.getElementById('resultArea').style.display = 'none';
+        bukaKamera();
+    }
 
     function validasiForm() {
         if (!namaInput.value.trim()) { alert('Silakan isi Nama Anda!'); return false; }
@@ -280,9 +388,8 @@
         });
     }
 
-
-
-	function muatDataUser() {
+    // FUNGSI TARIK DATA REKAP DARI SHEET "sidak"
+    function muatDataUser() {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
         fetch(url)
@@ -294,16 +401,14 @@
                 const rows = data.table.rows;
                 dataUserGlobal = [];
 
-                // Ambil mulai dari baris kedua (indeks 1)
                 const targetRows = rows.slice(1);
 
                 targetRows.forEach(row => {
                     if(row.c) {
-                        let nama = row.c[0] ? row.c[0].v : '';
-                        let bidang = row.c[1] ? row.c[1].v : '';
+                        let nama = row.c[0] ? String(row.c[0].v) : '';
+                        let bidang = row.c[1] ? String(row.c[1].v) : '';
                         let nip = row.c[2] ? String(row.c[2].v) : '';
 
-                        // Hilangkan awalan tanda petik ' jika ada
                         if (nama.startsWith("'")) nama = nama.substring(1);
                         if (bidang.startsWith("'")) bidang = bidang.substring(1);
                         if (nip.startsWith("'")) nip = nip.substring(1);
@@ -314,7 +419,6 @@
                     }
                 });
 
-                // Balikkan urutan array agar data paling bawah berada di paling atas
                 dataUserGlobal.reverse();
 
                 hitungStatistikBidang(dataUserGlobal);
@@ -326,7 +430,6 @@
             });
     }
 
-	
     function hitungStatistikBidang(data) {
         const hitungan = { Audit: 0, Fasilitas: 0, KC: 0, KI: 0, P2: 0, Umum: 0 };
 
@@ -341,7 +444,6 @@
             if (el) el.innerText = hitungan[key];
         });
     }
-
 
     function tampilkanTabel(data) {
         const tbody = document.getElementById('tableBody');
@@ -363,7 +465,6 @@
             tbody.appendChild(tr);
         });
     }
-
 
     function calculateSimilarity(str1, str2) {
         const s1 = str1.toLowerCase();
