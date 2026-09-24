@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presensi Selfie</title>
+    
+    <!-- Library face-api.js untuk Deteksi Wajah & Landmark -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
@@ -74,7 +78,7 @@
     <!-- Area Video Kamera -->
     <div id="cameraArea">
         <video id="webcam" autoplay playsinline></video>
-        <button type="button" class="btn" onclick="ambilFoto()">Shutter (Jepret)</button>
+        <button type="button" class="btn" id="btnShutter" onclick="ambilFoto()">Shutter (Jepret)</button>
     </div>
 
     <!-- Area Hasil Foto -->
@@ -136,14 +140,25 @@
     let fotoDataBase64 = '';
     let dataUserGlobal = [];     // Menampung rekap presensi (sheet "sidak")
     let dataMasterPegawai = [];  // Menampung data master pegawai (sheet "data")
+    let isModelLoaded = false;    // Menandai model AI face-api telah siap
 
-    window.onload = function() {
+    window.onload = async function() {
         if (localStorage.getItem('saved_nama')) namaInput.value = localStorage.getItem('saved_nama');
         if (localStorage.getItem('saved_bidang')) bidangInput.value = localStorage.getItem('saved_bidang');
         if (localStorage.getItem('saved_nip')) nipInput.value = localStorage.getItem('saved_nip');
         
         muatMasterPegawai(); // Muat data master dari sheet "data"
         muatDataUser();       // Muat data rekap presensi dari sheet "sidak"
+
+        // Memuat Model face-api.js
+        try {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            isModelLoaded = true;
+        } catch (err) {
+            console.error('Gagal memuat model deteksi wajah:', err);
+        }
     };
 
     nipInput.addEventListener('keydown', (e) => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); });
@@ -284,10 +299,43 @@
         }
     }
 
-    function ambilFoto() {
+    async function ambilFoto() {
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('canvas');
         const context = canvas.getContext('2d');
+        const btnShutter = document.getElementById('btnShutter');
+
+        if (!isModelLoaded) {
+            alert('Sistem verifikasi wajah sedang menyiapkan model. Silakan tunggu sebentar.');
+            return;
+        }
+
+        btnShutter.disabled = true;
+        btnShutter.innerText = 'Memeriksa Wajah...';
+
+        // Deteksi objek wajah dan titik landmark spasialnya
+        const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+                                       .withFaceLandmarks();
+
+        if (!detection) {
+            alert('Ulangi, wajah tidak terdeteksi dengan jelas');
+            btnShutter.disabled = false;
+            btnShutter.innerText = 'Shutter (Jepret)';
+            return;
+        }
+
+        // Verifikasi kelengkapan struktur anatomi muka
+        const landmarks = detection.landmarks;
+        const nose = landmarks.getNose();
+        const leftEye = landmarks.getLeftEye();
+        const rightEye = landmarks.getRightEye();
+
+        if (!nose || !leftEye || !rightEye || leftEye.length === 0 || rightEye.length === 0) {
+            alert('Ulangi, wajah tidak terdeteksi dengan jelas');
+            btnShutter.disabled = false;
+            btnShutter.innerText = 'Shutter (Jepret)';
+            return;
+        }
 
         const maxDimension = 1366; 
         let width = video.videoWidth;
@@ -315,6 +363,9 @@
         document.getElementById('hasilFoto').src = fotoDataBase64;
         document.getElementById('cameraArea').style.display = 'none';
         document.getElementById('resultArea').style.display = 'block';
+
+        btnShutter.disabled = false;
+        btnShutter.innerText = 'Shutter (Jepret)';
     }
 
     function fotoUlang() {
