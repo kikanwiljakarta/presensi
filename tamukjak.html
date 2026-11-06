@@ -65,12 +65,13 @@
         </div>
 
         <table>
-            <thead>
-                <tr>
-                    <th style="width:10%;">No</th>
-                    <th>Nama</th>
-                </tr>
-            </thead>
+<thead>
+    <tr>
+        <th style="width:15%;">No</th>
+        <th>Nama</th>
+    </tr>
+</thead>
+          
             <tbody id="tableBody">
                 <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
             </tbody>
@@ -220,13 +221,12 @@
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada data ditemukan.</td></tr>';
             return;
         }
-
-        data.forEach((item, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${index + 1}</td><td>${item.nama}</td>`;
-        });
-    }
-
+data.forEach((item, index) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${index + 1}</td><td>${item.nama}</td>`;
+    tbody.appendChild(tr);
+});
+       
     function filterData() {
         const query = document.getElementById('searchInput').value.trim();
 
