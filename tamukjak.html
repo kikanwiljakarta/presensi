@@ -143,7 +143,7 @@
             perusahaan: perusahaanInput.value,
             bertemu: bertemuInput.value,
             keterangan: keteranganInput.value,
-            foto: '', 
+            foto: '',
             tanggal: new Date().toLocaleString('id-ID')
         };
 
@@ -181,12 +181,6 @@
     function muatDataUser() {
         const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
-        // Format tanggal hari ini untuk pencocokan (DD/MM/YYYY)
-        const today = new Date();
-        const dd = String(today.getDate()).padStart(2, '0');
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        const yyyy = today.getFullYear();
-
         fetch(url).then(res => res.text()).then(rep => {
             const jsonString = rep.substring(47, rep.length - 2);
             const data = JSON.parse(jsonString);
@@ -197,25 +191,13 @@
             rows.slice(1).forEach(row => {
                 if (row.c) {
                     let nama = row.c[0] ? String(row.c[0].v) : '';
-                    let tanggal = row.c[5] ? String(row.c[5].v) : ''; // Kolom ke-6 (indeks 5) menyimpan tanggal
-
                     if (nama.startsWith("'")) nama = nama.substring(1);
 
-                    // Filter hanya data untuk hari ini
-                    let isToday = false;
-                    if (tanggal) {
-                        if (tanggal.includes(`${dd}/${mm}/${yyyy}`) || tanggal.includes(`${parseInt(dd)}/${parseInt(mm)}/${yyyy}`)) {
-                            isToday = true;
-                        }
-                    }
-
-                    if (nama && isToday) {
-                        dataUserGlobal.push({ nama });
-                    }
+                    if (nama) dataUserGlobal.push({ nama });
                 }
             });
 
-            dataUserGlobal.reverse(); // Membalik urutan agar data terakhir berada di atas[cite: 1]
+            dataUserGlobal.reverse();
             tampilkanTabel(dataUserGlobal);
 
         }).catch(err => {
@@ -229,7 +211,7 @@
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">Tidak ada data tamu hari ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;">Tidak ada data ditemukan.</td></tr>';
             return;
         }
 
