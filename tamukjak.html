@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buku Tamu Kanwil Bea Cukai Jakarta</title>
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -14,13 +13,8 @@
         .form-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
         input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background-color: #fff; }
-        small { color: #888; font-size: 11px; }
-        .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.3s; }
-        .btn:hover { background-color: #0056b3; }
-        .btn-success { background-color: #28a745; }
-        .btn-success:hover { background-color: #218838; }
-        #cameraArea, #resultArea { display: none; text-align: center; margin-top: 15px; }
-        video, canvas, img { width: 100%; max-width: 100%; border-radius: 8px; border: 1px solid #ddd; }
+        .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; color: white; background-color: #28a745; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.3s; }
+        .btn:hover { background-color: #218838; }
         .status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; }
         .section-table { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
         .search-box { margin-bottom: 15px; }
@@ -60,22 +54,8 @@
         <input type="text" id="keterangan" placeholder="Masukkan keperluan kunjungan">
     </div>
 
-    <button type="button" class="btn" id="btnBukaKamera" onclick="bukaKamera()">AMBIL FOTO SELFIE</button>
+    <button type="button" class="btn" id="btnSimpan" onclick="kirimData()">SIMPAN DATA</button>
 
-    <div id="cameraArea">
-        <video id="webcam" autoplay playsinline></video>
-        <button type="button" class="btn" id="btnShutter" onclick="ambilFoto()">Shutter (Jepret)</button>
-    </div>
-
-    <div id="resultArea">
-        <img id="hasilFoto" alt="Hasil Selfie">
-        <div style="display:flex;gap:10px;margin-top:10px;">
-            <button type="button" class="btn" style="background-color:#6c757d;" onclick="fotoUlang()">FOTO ULANG</button>
-            <button type="button" class="btn btn-success" id="btnKirim" onclick="kirimData()">KIRIM DATA</button>
-        </div>
-    </div>
-
-    <canvas id="canvas" style="display:none;"></canvas>
     <div class="status" id="statusPesan"></div>
 
     <div class="section-table">
@@ -112,26 +92,14 @@
     const bertemuInput = document.getElementById('bertemu');
     const keteranganInput = document.getElementById('keterangan');
 
-    let rawImageBase64 = '';
-    let watermarkedImageBase64 = '';
     let dataUserGlobal = [];
-    let isModelLoaded = false;
 
-    window.onload = async function() {
+    window.onload = function() {
         if (localStorage.getItem('saved_nama')) namaInput.value = localStorage.getItem('saved_nama');
         if (localStorage.getItem('saved_perusahaan')) perusahaanInput.value = localStorage.getItem('saved_perusahaan');
         if (localStorage.getItem('saved_bertemu')) bertemuInput.value = localStorage.getItem('saved_bertemu');
 
         muatDataUser();
-
-        try {
-            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-            isModelLoaded = true;
-        } catch (err) {
-            console.error('Gagal memuat model deteksi wajah:', err);
-        }
     };
 
     namaInput.addEventListener('input', () => localStorage.setItem('saved_nama', namaInput.value));
@@ -146,191 +114,38 @@
         window.snackbarTimer = setTimeout(() => snackbar.className = '', 3500);
     }
 
-    async function bukaKamera() {
-        if (!validasiForm()) return;
-
-        const statusDiv = document.getElementById('statusPesan');
-        const btnBukaKamera = document.getElementById('btnBukaKamera');
-
-        btnBukaKamera.disabled = true;
-        btnBukaKamera.innerText = 'Membuka Kamera...';
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user' },
-                audio: false
-            });
-
-            const video = document.getElementById('webcam');
-            video.srcObject = stream;
-
-            document.getElementById('cameraArea').style.display = 'block';
-            btnBukaKamera.style.display = 'none';
-            statusDiv.innerText = '';
-
-        } catch (err) {
-            console.error('Gagal mendapatkan kamera:', err);
-            alert('Kamera tidak dapat diakses.\n\nSilakan izinkan akses kamera pada browser Anda.');
-            statusDiv.innerText = '';
-        } finally {
-            btnBukaKamera.disabled = false;
-            btnBukaKamera.innerText = 'AMBIL FOTO SELFIE';
-        }
-    }
-
-    async function ambilFoto() {
-        const video = document.getElementById('webcam');
-        const canvas = document.getElementById('canvas');
-        const context = canvas.getContext('2d');
-        const btnShutter = document.getElementById('btnShutter');
-
-        if (!isModelLoaded) {
-            alert('Sistem verifikasi wajah sedang menyiapkan model. Silakan tunggu sebentar.');
-            return;
-        }
-
-        btnShutter.disabled = true;
-        btnShutter.innerText = 'Memeriksa Wajah...';
-
-        try {
-            const detection = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-                .withFaceLandmarks();
-
-            if (!detection) {
-                alert('Ulangi, wajah tidak terdeteksi dengan jelas');
-                resetTombolShutter();
-                return;
-            }
-
-            const maxDimension = 1366;
-            let width = video.videoWidth;
-            let height = video.videoHeight;
-
-            if (width > maxDimension || height > maxDimension) {
-                if (width > height) {
-                    height = Math.round((height * maxDimension) / width);
-                    width = maxDimension;
-                } else {
-                    width = Math.round((width * maxDimension) / height);
-                    height = maxDimension;
-                }
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-
-            context.drawImage(video, 0, 0, width, height);
-            rawImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
-
-            const stream = video.srcObject;
-            if (stream) stream.getTracks().forEach(track => track.stop());
-
-            document.getElementById('hasilFoto').src = rawImageBase64;
-            document.getElementById('cameraArea').style.display = 'none';
-            document.getElementById('resultArea').style.display = 'block';
-
-            resetTombolShutter();
-
-        } catch (err) {
-            console.error(err);
-            alert('Terjadi kesalahan saat mengambil foto.');
-            resetTombolShutter();
-        }
-    }
-
-    function resetTombolShutter() {
-        const btnShutter = document.getElementById('btnShutter');
-        btnShutter.disabled = false;
-        btnShutter.innerText = 'Shutter (Jepret)';
-    }
-
-    function fotoUlang() {
-        document.getElementById('resultArea').style.display = 'none';
-        bukaKamera();
-    }
-
     function validasiForm() {
         if (!namaInput.value.trim()) {
-            alert('Silakan isi Nama Lengkap Anda!');
+            tampilkanSnackbar('Silakan isi Nama Lengkap Anda!');
             return false;
         }
         if (!perusahaanInput.value.trim()) {
-            alert('Silakan isi Asal / Perusahaan Anda!');
+            tampilkanSnackbar('Silakan isi Asal / Perusahaan Anda!');
             return false;
         }
         if (!bertemuInput.value.trim()) {
-            alert('Silakan isi nama pegawai yang akan dituju!');
+            tampilkanSnackbar('Silakan isi nama pegawai yang akan dituju!');
             return false;
         }
         return true;
     }
 
-    function tempelWatermark() {
-        return new Promise((resolve) => {
-            const img = new Image();
+    function kirimData() {
+        if (!validasiForm()) return;
 
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-
-                canvas.width = img.width;
-                canvas.height = img.height;
-
-                context.drawImage(img, 0, 0);
-
-                const namaText = `Nama       : ${namaInput.value.trim()}`;
-                const perusahaanText = `Perusahaan : ${perusahaanInput.value.trim()}`;
-                const bertemuText = `Bertemu    : ${bertemuInput.value.trim()}`;
-                const waktuText  = `Waktu      : ${new Date().toLocaleString('id-ID')}`;
-
-                const padding = 15;
-                const fontSize = Math.max(14, Math.round(canvas.width * 0.025));
-                const lineHeight = fontSize * 1.4;
-                const totalHeight = (lineHeight * 4) + (padding * 2);
-
-                context.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                context.fillRect(0, canvas.height - totalHeight, canvas.width, totalHeight);
-
-                context.font = `bold ${fontSize}px Arial, sans-serif`;
-                context.fillStyle = '#ffffff';
-
-                let startY = canvas.height - totalHeight + padding + fontSize;
-
-                context.fillText(namaText, padding, startY);
-                context.fillText(perusahaanText, padding, startY + lineHeight);
-                context.fillText(bertemuText, padding, startY + (lineHeight * 2));
-                context.fillText(waktuText, padding, startY + (lineHeight * 3));
-
-                resolve(canvas.toDataURL('image/jpeg', 0.85));
-            };
-
-            img.src = rawImageBase64;
-        });
-    }
-
-    async function kirimData() {
         const statusDiv = document.getElementById('statusPesan');
+        const btnSimpan = document.getElementById('btnSimpan');
 
         statusDiv.style.color = 'blue';
-        statusDiv.innerText = 'Memproses foto dan watermark...';
-
-        watermarkedImageBase64 = await tempelWatermark();
-        prosesKirim();
-    }
-
-    function prosesKirim() {
-        const statusDiv = document.getElementById('statusPesan');
-
         statusDiv.innerText = 'Mengirim data ke server...';
-        document.getElementById('btnKirim').disabled = true;
+        btnSimpan.disabled = true;
 
         const payload = {
             nama: namaInput.value,
             perusahaan: perusahaanInput.value,
             bertemu: bertemuInput.value,
             keterangan: keteranganInput.value,
-            foto: watermarkedImageBase64,
+            foto: '', // Kosongkan karena fitur foto sudah dihapus
             tanggal: new Date().toLocaleString('id-ID')
         };
 
@@ -342,18 +157,27 @@
         })
         .then(() => {
             statusDiv.style.color = 'green';
-            statusDiv.innerText = 'Verifikasi wajah berhasil dan data tamu terkirim.';
+            statusDiv.innerText = 'Data tamu berhasil disimpan!';
+            tampilkanSnackbar('Data berhasil dikirim!');
 
-            document.getElementById('resultArea').style.display = 'none';
-            document.getElementById('btnBukaKamera').style.display = 'block';
-            document.getElementById('btnKirim').disabled = false;
+            // Bersihkan form atau biarkan jika ingin tetap tersimpan di localStorage
+            namaInput.value = '';
+            perusahaanInput.value = '';
+            bertemuInput.value = '';
+            keteranganInput.value = '';
+            localStorage.clear();
 
-            setTimeout(muatDataUser, 2000);
+            btnSimpan.disabled = false;
+
+            setTimeout(() => {
+                statusDiv.innerText = '';
+                muatDataUser();
+            }, 2000);
         })
         .catch(err => {
             statusDiv.style.color = 'red';
             statusDiv.innerText = 'Gagal mengirim data: ' + err.message;
-            document.getElementById('btnKirim').disabled = false;
+            btnSimpan.disabled = false;
         });
     }
 
@@ -404,13 +228,6 @@
             tr.innerHTML = `<td>${index + 1}</td><td>${item.nama}</td><td>${item.perusahaan || '-'}</td><td>${item.bertemu || '-'}</td>`;
             tbody.appendChild(tr);
         });
-    }
-
-    function calculateSimilarity(str1, str2) {
-        const s1 = str1.toLowerCase();
-        const s2 = str2.toLowerCase();
-        if (s1.includes(s2) || s2.includes(s1)) return 1;
-        return 0.5;
     }
 
     function filterData() {
