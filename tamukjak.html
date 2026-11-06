@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buku Tamu Kanwil Bea Cukai Jakarta</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .container { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h2, h3 { text-align: center; color: #333; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background-color: #fff; }
+        small { color: #888; font-size: 11px; }
+        .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.3s; }
+        .btn:hover { background-color: #0056b3; }
+        .btn-success { background-color: #28a745; }
+        .btn-success:hover { background-color: #218838; }
+        #cameraArea, #resultArea { display: none; text-align: center; margin-top: 15px; }
+        video, canvas, img { width: 100%; max-width: 100%; border-radius: 8px; border: 1px solid #ddd; }
+        .status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; }
+        .section-table { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        .search-box { margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        table th { background-color: #f8f9fa; color: #333; }
+
+        /* Snackbar */
+        #snackbar { visibility: hidden; min-width: 280px; max-width: 90%; background: #dc3545; color: #fff; text-align: center; border-radius: 8px; padding: 14px 18px; position: fixed; z-index: 99999; left: 50%; bottom: 25px; transform: translateX(-50%); font-size: 14px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,.25); }
+        #snackbar.show { visibility: visible; animation: fadein .3s, fadeout .5s 3s; }
+        @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 25px; opacity: 1; } }
+        @keyframes fadeout { from { bottom: 25px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Buku Tamu Kanwil Bea Cukai Jakarta</h2>
+
+    <div class="form-group">
+        <label for="nama">Nama Lengkap</label>
+        <input type="text" id="nama" placeholder="Masukkan nama lengkap">
+    </div>
+
+    <div class="form-group">
+        <label for="perusahaan">Asal / Perusahaan</label>
+        <input type="text" id="perusahaan" placeholder="Masukkan asal instansi / perusahaan">
+    </div>
+
+    <div class="form-group">
+        <label for="bertemu">Akan Bertemu dengan</label>
+        <input type="text" id="bertemu" placeholder="Nama pegawai / bagian yang dituju">
+    </div>
+
+    <div class="form-group">
+        <label for="keterangan">Keperluan / Keterangan</label>
+        <input type="text" id="keterangan" placeholder="Masukkan keperluan kunjungan">
+    </div>
+
+    <button type="button" class="btn" id="btnBukaKamera" onclick="bukaKamera()">AMBIL FOTO SELFIE</button>
+
+    <div id="cameraArea">
+        <video id="webcam" autoplay playsinline></video>
+        <button type="button" class="btn" id="btnShutter" onclick="ambilFoto()">Shutter (Jepret)</button>
+    </div>
+
+    <div id="resultArea">
+        <img id="hasilFoto" alt="Hasil Selfie">
+        <div style="display:flex;gap:10px;margin-top:10px;">
+            <button type="button" class="btn" style="background-color:#6c757d;" onclick="fotoUlang()">FOTO ULANG</button>
+            <button type="button" class="btn btn-success" id="btnKirim" onclick="kirimData()">KIRIM DATA</button>
+        </div>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+    <div class="status" id="statusPesan"></div>
+
+    <div class="section-table">
+        <h3>Daftar Tamu Hari Ini</h3>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Cari nama tamu atau perusahaan..." oninput="filterData()">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:10%;">No</th>
+                    <th>Nama</th>
+                    <th>Asal Perusahaan</th>
+                    <th>Bertemu</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="snackbar"></div>
+
+<script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysW13xJH3fkixGeIHxdCMlHgrMLEFhY__mlAye67ULnXWvHU0y9q-RG1FiAcOVufGyoA/exec';
+    const SPREADSHEET_ID = '1ivqJ4NzYQkDFqHkZaa-bovC97JMwX3IqFuGvKcHs5g8';
+    const SHEET_NAME = 'tamu';
+
+    const namaInput = document.getElementById('nama');
+    const perusahaanInput = document.getElementById('perusahaan');
+    const bertemuInput = document.getElementById('bertemu');
+    const keteranganInput = document.getElementById('keterangan');
+
+    let rawImageBase64 = '';
+    let watermarkedImageBase64 = '';
+    let dataUserGlobal = [];
+    let isModelLoaded = false;
+
+    window.onload = async function() {
+        if (localStorage.getItem('saved_nama')) namaInput.value = localStorage.getItem('saved_nama');
+        if (localStorage.getItem('saved_perusahaan')) perusahaanInput.value = localStorage.getItem('saved_perusahaan');
+        if (localStorage.getItem('saved_bertemu')) bertemuInput.value = localStorage.getItem('saved_bertemu');
+
+        muatDataUser();
+
+        try {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            isModelLoaded = true;
+        } catch (err) {
+            console.error('Gagal memuat model deteksi wajah:', err);
+        }
+    };
+
+    namaInput.addEventListener('input', () => localStorage.setItem('saved_nama', namaInput.value));
+    perusahaanInput.addEventListener('input', () => localStorage.setItem('saved_perusahaan', perusahaanInput.value));
+    bertemuInput.addEventListener('input', () => localStorage.setItem('saved_bertemu', bertemuInput.value));
+
+    function tampilkanSnackbar(pesan) {
+        const snackbar = document.getElementById('snackbar');
+        snackbar.innerText = pesan;
+        snackbar.className = 'show';
+        clearTimeout(window.snackbarTimer);
+        window.snackbarTimer = setTimeout(() => snackbar.className = '', 3500);
+    }
+
+    async function bukaKamera() {
+        if (!validasiForm()) return;
+
+        const statusDiv = document.getElementById('statusPesan');
+        const btnBukaKamera = document.getElementById('btnBukaKamera');
+
+        btnBukaKamera.disabled = true;
+        btnBukaKamera.innerText = 'Membuka Kamera...';
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user' },
+                audio: false
+            });
+
+            const video = document.getElementById('webcam');
+            video.srcObject = stream;
+
+            document.getElementById('cameraArea').style.display = 'block';
+            btnBukaKamera.style.display = 'none';
+            statusDiv.innerText = '';
+
+        } catch (err) {
+            console.error('Gagal mendapatkan kamera:', err);
+            alert('Kamera tidak dapat diakses.\n\nSilakan izinkan akses kamera pada browser Anda.');
+            statusDiv.innerText = '';
+        } finally {
+            btnBukaKamera.disabled = false;
+            btnBukaKamera.innerText = 'AMBIL FOTO SELFIE';
+        }
+    }
+
+    async function ambilFoto() {
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const btnShutter = document.getElementById('btnShutter');
+
+        if (!isModelLoaded) {
+            alert('Sistem verifikasi wajah sedang menyiapkan model. Silakan tunggu sebentar.');
+            return;
+        }
+
+        btnShutter.disabled = true;
+        btnShutter.innerText = 'Memeriksa Wajah...';
+
+        try {
+            const detection = await faceapi
+                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+                .withFaceLandmarks();
+
+            if (!detection) {
+                alert('Ulangi, wajah tidak terdeteksi dengan jelas');
+                resetTombolShutter();
+                return;
+            }
+
+            const maxDimension = 1366;
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+
+            if (width > maxDimension || height > maxDimension) {
+                if (width > height) {
+                    height = Math.round((height * maxDimension) / width);
+                    width = maxDimension;
+                } else {
+                    width = Math.round((width * maxDimension) / height);
+                    height = maxDimension;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            context.drawImage(video, 0, 0, width, height);
+            rawImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+            const stream = video.srcObject;
+            if (stream) stream.getTracks().forEach(track => track.stop());
+
+            document.getElementById('hasilFoto').src = rawImageBase64;
+            document.getElementById('cameraArea').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'block';
+
+            resetTombolShutter();
+
+        } catch (err) {
+            console.error(err);
+            alert('Terjadi kesalahan saat mengambil foto.');
+            resetTombolShutter();
+        }
+    }
+
+    function resetTombolShutter() {
+        const btnShutter = document.getElementById('btnShutter');
+        btnShutter.disabled = false;
+        btnShutter.innerText = 'Shutter (Jepret)';
+    }
+
+    function fotoUlang() {
+        document.getElementById('resultArea').style.display = 'none';
+        bukaKamera();
+    }
+
+    function validasiForm() {
+        if (!namaInput.value.trim()) {
+            alert('Silakan isi Nama Lengkap Anda!');
+            return false;
+        }
+        if (!perusahaanInput.value.trim()) {
+            alert('Silakan isi Asal / Perusahaan Anda!');
+            return false;
+        }
+        if (!bertemuInput.value.trim()) {
+            alert('Silakan isi nama pegawai yang akan dituju!');
+            return false;
+        }
+        return true;
+    }
+
+    function tempelWatermark() {
+        return new Promise((resolve) => {
+            const img = new Image();
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                context.drawImage(img, 0, 0);
+
+                const namaText = `Nama       : ${namaInput.value.trim()}`;
+                const perusahaanText = `Perusahaan : ${perusahaanInput.value.trim()}`;
+                const bertemuText = `Bertemu    : ${bertemuInput.value.trim()}`;
+                const waktuText  = `Waktu      : ${new Date().toLocaleString('id-ID')}`;
+
+                const padding = 15;
+                const fontSize = Math.max(14, Math.round(canvas.width * 0.025));
+                const lineHeight = fontSize * 1.4;
+                const totalHeight = (lineHeight * 4) + (padding * 2);
+
+                context.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                context.fillRect(0, canvas.height - totalHeight, canvas.width, totalHeight);
+
+                context.font = `bold ${fontSize}px Arial, sans-serif`;
+                context.fillStyle = '#ffffff';
+
+                let startY = canvas.height - totalHeight + padding + fontSize;
+
+                context.fillText(namaText, padding, startY);
+                context.fillText(perusahaanText, padding, startY + lineHeight);
+                context.fillText(bertemuText, padding, startY + (lineHeight * 2));
+                context.fillText(waktuText, padding, startY + (lineHeight * 3));
+
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
+            };
+
+            img.src = rawImageBase64;
+        });
+    }
+
+    async function kirimData() {
+        const statusDiv = document.getElementById('statusPesan');
+
+        statusDiv.style.color = 'blue';
+        statusDiv.innerText = 'Memproses foto dan watermark...';
+
+        watermarkedImageBase64 = await tempelWatermark();
+        prosesKirim();
+    }
+
+    function prosesKirim() {
+        const statusDiv = document.getElementById('statusPesan');
+
+        statusDiv.innerText = 'Mengirim data ke server...';
+        document.getElementById('btnKirim').disabled = true;
+
+        const payload = {
+            nama: namaInput.value,
+            perusahaan: perusahaanInput.value,
+            bertemu: bertemuInput.value,
+            keterangan: keteranganInput.value,
+            foto: watermarkedImageBase64,
+            tanggal: new Date().toLocaleString('id-ID')
+        };
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            statusDiv.style.color = 'green';
+            statusDiv.innerText = 'Verifikasi wajah berhasil dan data tamu terkirim.';
+
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('btnBukaKamera').style.display = 'block';
+            document.getElementById('btnKirim').disabled = false;
+
+            setTimeout(muatDataUser, 2000);
+        })
+        .catch(err => {
+            statusDiv.style.color = 'red';
+            statusDiv.innerText = 'Gagal mengirim data: ' + err.message;
+            document.getElementById('btnKirim').disabled = false;
+        });
+    }
+
+    function muatDataUser() {
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+
+        fetch(url).then(res => res.text()).then(rep => {
+            const jsonString = rep.substring(47, rep.length - 2);
+            const data = JSON.parse(jsonString);
+            const rows = data.table.rows;
+
+            dataUserGlobal = [];
+
+            rows.slice(1).forEach(row => {
+                if (row.c) {
+                    let nama = row.c[0] ? String(row.c[0].v) : '';
+                    let perusahaan = row.c[1] ? String(row.c[1].v) : '';
+                    let bertemu = row.c[2] ? String(row.c[2].v) : '';
+
+                    if (nama.startsWith("'")) nama = nama.substring(1);
+                    if (perusahaan.startsWith("'")) perusahaan = perusahaan.substring(1);
+                    if (bertemu.startsWith("'")) bertemu = bertemu.substring(1);
+
+                    if (nama || perusahaan) dataUserGlobal.push({ nama, perusahaan, bertemu });
+                }
+            });
+
+            dataUserGlobal.reverse();
+            tampilkanTabel(dataUserGlobal);
+
+        }).catch(err => {
+            console.error(err);
+            document.getElementById('tableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Gagal memuat data.</td></tr>';
+        });
+    }
+
+    function tampilkanTabel(data) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada data ditemukan.</td></tr>';
+            return;
+        }
+
+        data.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${index + 1}</td><td>${item.nama}</td><td>${item.perusahaan || '-'}</td><td>${item.bertemu || '-'}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function calculateSimilarity(str1, str2) {
+        const s1 = str1.toLowerCase();
+        const s2 = str2.toLowerCase();
+        if (s1.includes(s2) || s2.includes(s1)) return 1;
+        return 0.5;
+    }
+
+    function filterData() {
+        const query = document.getElementById('searchInput').value.trim();
+
+        if (!query) {
+            tampilkanTabel(dataUserGlobal);
+            return;
+        }
+
+        const filtered = dataUserGlobal.filter(item => {
+            return (item.nama && item.nama.toLowerCase().includes(query.toLowerCase())) ||
+                   (item.perusahaan && item.perusahaan.toLowerCase().includes(query.toLowerCase()));
+        });
+
+        tampilkanTabel(filtered);
+    }
+</script>
+
+</body>
+</html>
