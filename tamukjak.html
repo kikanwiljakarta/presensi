@@ -69,8 +69,6 @@
                 <tr>
                     <th style="width:10%;">No</th>
                     <th>Nama</th>
-                    <th>Asal Perusahaan</th>
-                    <th>Bertemu</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -225,8 +223,7 @@
 
         data.forEach((item, index) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${index + 1}</td><td>${item.nama}</td><td>${item.perusahaan || '-'}</td><td>${item.bertemu || '-'}</td>`;
-            tbody.appendChild(tr);
+            tr.innerHTML = `<td>${index + 1}</td><td>${item.nama}</td>`;
         });
     }
 
