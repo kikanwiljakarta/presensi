@@ -19,8 +19,11 @@
         .section-table { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
         .search-box { margin-bottom: 15px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        table th { background-color: #f8f9fa; color: #333; }
+        table th { border: 1px solid #ddd; padding: 8px; text-align: center; }
+		table td { border: 1px solid #ddd; padding: 8px; }
+		table td:nth-child(1) { text-align: center; }
+		table td:nth-child(2) { text-align: left; }        
+		table th { background-color: #f8f9fa; color: #333; }
 
         /* Snackbar */
         #snackbar { visibility: hidden; min-width: 280px; max-width: 90%; background: #dc3545; color: #fff; text-align: center; border-radius: 8px; padding: 14px 18px; position: fixed; z-index: 99999; left: 50%; bottom: 25px; transform: translateX(-50%); font-size: 14px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,.25); }
@@ -178,33 +181,72 @@
         });
     }
 
-    function muatDataUser() {
-        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
-        fetch(url).then(res => res.text()).then(rep => {
-            const jsonString = rep.substring(47, rep.length - 2);
-            const data = JSON.parse(jsonString);
-            const rows = data.table.rows;
+	function muatDataUser() {
+		const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
-            dataUserGlobal = [];
+		fetch(url)
+			.then(res => res.text())
+			.then(rep => {
+				const jsonString = rep.substring(47, rep.length - 2);
+				const data = JSON.parse(jsonString);
+				const rows = data.table.rows;
 
-            rows.slice(1).forEach(row => {
-                if (row.c) {
-                    let nama = row.c[0] ? String(row.c[0].v) : '';
-                    if (nama.startsWith("'")) nama = nama.substring(1);
+				dataUserGlobal = [];
 
-                    if (nama) dataUserGlobal.push({ nama });
-                }
-            });
+				// Mendapatkan tanggal hari ini
+				const today = new Date();
+				const tglHariIni = 
+					today.getDate() + '/' +
+					(today.getMonth() + 1) + '/' +
+					today.getFullYear();
 
-            dataUserGlobal.reverse();
-            tampilkanTabel(dataUserGlobal);
+				rows.slice(1).forEach(row => {
+					if (row.c) {
+						let nama = row.c[0] ? String(row.c[0].v) : '';
 
-        }).catch(err => {
-            console.error(err);
-            document.getElementById('tableBody').innerHTML = '<tr><td colspan="2" style="text-align:center;">Gagal memuat data.</td></tr>';
-        });
-    }
+						if (nama.startsWith("'")) {
+							nama = nama.substring(1);
+						}
+
+						// Mengambil tanggal dari kolom ke-5 (indeks 4)
+						let tanggalTamu = '';
+
+						if (row.c[4]) {
+							tanggalTamu = row.c[4].f
+								? String(row.c[4].f)
+								: String(row.c[4].v || '');
+						}
+
+						// Mengambil bagian tanggal saja
+						// Contoh: 6/11/2026, 16.25.18
+						// Menjadi: 6/11/2026
+						let tanggalSaja = tanggalTamu.split(',')[0].trim();
+
+						// Format tanggal hari ini tanpa angka 0 di depan
+						// Contoh: 6/11/2026
+						if (nama && tanggalSaja === tglHariIni) {
+							dataUserGlobal.push({
+								nama: nama,
+								tanggal: tanggalTamu
+							});
+						}
+					}
+				});
+
+				// Urutkan data terbaru di atas
+				dataUserGlobal.reverse();
+
+				tampilkanTabel(dataUserGlobal);
+
+			})
+			.catch(err => {
+				console.error(err);
+				document.getElementById('tableBody').innerHTML =
+					'<tr><td colspan="2" style="text-align:center;">Gagal memuat data.</td></tr>';
+			});
+	}
+
 
     function tampilkanTabel(data) {
         const tbody = document.getElementById('tableBody');
