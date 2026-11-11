@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Advocacy</title>
+
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .container { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        
+        /* Styling Judul dan Link Satu Baris Responsif */
+        h2 { text-align: center; color: #333; margin-top: 0; margin-bottom: 5px; }
+        .header-link-container { text-align: center; margin-bottom: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-link-container a { font-size: clamp(9px, 3.2vw, 13px); color: #007bff; text-decoration: none; }
+        .header-link-container a:hover { text-decoration: underline; }
+
+        h3 { text-align: center; color: #333; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background-color: #fff; }
+        small { color: #888; font-size: 11px; }
+        .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: bold; color: white; background-color: #007bff; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; transition: background 0.3s; }
+        .btn:hover { background-color: #0056b3; }
+        .status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; }
+
+        /* Style Tabel & Pencarian */
+        .section-table { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        .search-box { margin-bottom: 15px; }
+        
+        /* Badges Rekapitulasi Bidang */
+        .stats-container { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+        .stat-badge { background: #e9ecef; border: 1px solid #ced4da; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #495057; }
+        .stat-badge span { color: #007bff; font-weight: 800; margin-left: 3px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        table th { background-color: #f8f9fa; color: #333; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Employee Advocacy</h2>
+    <div class="header-link-container">
+        <a href="https://www.facebook.com/share/v/19yvsT6xXQ/" target="_blank">https://www.facebook.com/share/v/19yvsT6xXQ/</a>
+    </div>
+    
+    <!-- Input Nama Lengkap dengan Datalist -->
+    <div class="form-group">
+        <label for="nama">Nama Lengkap</label>
+        <input type="text" id="nama" list="listNama" placeholder="Masukkan nama lengkap">
+        <datalist id="listNama"></datalist>
+    </div>
+
+    <!-- Dropdown Bidang/Bagian -->
+    <div class="form-group">
+        <label for="bidang">Bidang / Bagian</label>
+        <select id="bidang">
+            <option value="">-- Pilih Bidang / Bagian --</option>
+            <option value="Audit">Audit</option>
+            <option value="Fasilitas">Fasilitas</option>
+            <option value="KC">KC</option>
+            <option value="KI">KI</option>
+            <option value="P2">P2</option>
+            <option value="Umum">Umum</option>
+        </select>
+    </div>
+
+    <!-- Input NIP dengan Datalist -->
+    <div class="form-group">
+        <label for="nip">NIP</label>
+        <input type="text" id="nip" list="listNip" maxlength="18" placeholder="Masukkan 18 digit NIP">
+        <datalist id="listNip"></datalist>
+        <small>Isi NIP berupa 18 digit angka, tanpa spasi.</small>
+    </div>
+
+    <!-- Dropdown Jenis Aktivasi (Pengganti Keterangan) -->
+    <div class="form-group">
+        <label for="keterangan">Jenis Aktivasi</label>
+        <select id="keterangan">
+            <option value="">-- Pilih Jenis Aktivasi --</option>
+            <option value="like">like</option>
+            <option value="comment">comment</option>
+            <option value="share">share</option>
+            <option value="like & comment">like & comment</option>
+            <option value="like & share">like & share</option>
+            <option value="like, comment & share">like, comment & share</option>
+        </select>
+    </div>
+
+    <button type="button" class="btn" id="btnSimpan" onclick="kirimData()">SIMPAN</button>
+
+    <div class="status" id="statusPesan"></div>
+
+    <!-- Section Tabel User & Statistik -->
+    <div class="section-table">
+        <h3>Daftar Yang Telah Aktivasi</h3>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Cari berdasarkan nama atau NIP..." oninput="filterData()">
+        </div>
+
+        <!-- Ringkasan Statistik Jumlah Per Bidang -->
+        <div class="stats-container" id="statsContainer">
+            <div class="stat-badge">Audit: <span id="stat-Audit">0</span></div>
+            <div class="stat-badge">Fasilitas: <span id="stat-Fasilitas">0</span></div>
+            <div class="stat-badge">KC: <span id="stat-KC">0</span></div>
+            <div class="stat-badge">KI: <span id="stat-KI">0</span></div>
+            <div class="stat-badge">P2: <span id="stat-P2">0</span></div>
+            <div class="stat-badge">Umum: <span id="stat-Umum">0</span></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 10%;">No</th>
+                    <th>Nama</th>
+                    <th>Bidang</th>
+                    <th>NIP</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr><td colspan="4" style="text-align:center;">Memuat data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6LzLtKjg9HHqlUxswfrojKSfE6kV0MgFwQj5x6Ic3TcO4LFiOaY3rrlEFLJrWBOkr/exec';
+    const SPREADSHEET_ID = '1LE0kJCm80R1AaHc14FWfw7S-fUIy5clVYtQ9Ovr4ipA'; 
+    const SHEET_NAME = 'sidak';
+    const TARGET_LINK = 'https://www.facebook.com/share/v/19yvsT6xXQ/';
+
+    const nipInput = document.getElementById('nip');
+    const namaInput = document.getElementById('nama');
+    const bidangInput = document.getElementById('bidang');
+    const keteranganInput = document.getElementById('keterangan');
+    
+    let dataUserGlobal = [];
+    let dataMasterPegawai = [];
+
+    window.onload = function() {
+        if (localStorage.getItem('saved_nama')) namaInput.value = localStorage.getItem('saved_nama');
+        if (localStorage.getItem('saved_bidang')) bidangInput.value = localStorage.getItem('saved_bidang');
+        if (localStorage.getItem('saved_nip')) nipInput.value = localStorage.getItem('saved_nip');
+        
+        muatMasterPegawai();
+        muatDataUser();
+    };
+
+    nipInput.addEventListener('keydown', (e) => { if (e.key === ' ' || e.code === 'Space') e.preventDefault(); });
+    nipInput.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
+    
+    namaInput.addEventListener('input', () => localStorage.setItem('saved_nama', namaInput.value));
+    bidangInput.addEventListener('change', () => localStorage.setItem('saved_bidang', bidangInput.value));
+    nipInput.addEventListener('input', () => localStorage.setItem('saved_nip', nipInput.value));
+
+    namaInput.addEventListener('change', function() {
+        const inputNama = this.value.trim().toLowerCase();
+        if (!inputNama) return;
+
+        const pegawai = dataMasterPegawai.find(item => item.nama.trim().toLowerCase() === inputNama);
+
+        if (pegawai) {
+            if (pegawai.nip) {
+                nipInput.value = pegawai.nip;
+                localStorage.setItem('saved_nip', pegawai.nip);
+            }
+            if (pegawai.bidang) {
+                bidangInput.value = pegawai.bidang;
+                localStorage.setItem('saved_bidang', pegawai.bidang);
+            }
+        }
+    });
+
+    nipInput.addEventListener('change', function() {
+        const inputNip = this.value.trim();
+        if (!inputNip) return;
+
+        const pegawai = dataMasterPegawai.find(item => item.nip.trim() === inputNip);
+
+        if (pegawai) {
+            if (pegawai.nama) {
+                namaInput.value = pegawai.nama;
+                localStorage.setItem('saved_nama', pegawai.nama);
+            }
+            if (pegawai.bidang) {
+                bidangInput.value = pegawai.bidang;
+                localStorage.setItem('saved_bidang', pegawai.bidang);
+            }
+        }
+    });
+
+    function muatMasterPegawai() {
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=data`;
+
+        fetch(url)
+            .then(res => res.text())
+            .then(rep => {
+                const jsonString = rep.substring(47, rep.length - 2);
+                const data = JSON.parse(jsonString);
+                
+                const rows = data.table.rows;
+                dataMasterPegawai = [];
+
+                rows.slice(1).forEach(row => {
+                    if(row.c) {
+                        let nama = row.c[0] ? String(row.c[0].v) : '';
+                        let bidang = row.c[1] ? String(row.c[1].v) : '';
+                        let nip = row.c[2] ? String(row.c[2].v) : '';
+
+                        if (nama.startsWith("'")) nama = nama.substring(1);
+                        if (bidang.startsWith("'")) bidang = bidang.substring(1);
+                        if (nip.startsWith("'")) nip = nip.substring(1);
+
+                        if (nama || nip) {
+                            dataMasterPegawai.push({ nama, bidang, nip });
+                        }
+                    }
+                });
+
+                updateDatalistNama(dataMasterPegawai);
+                updateDatalistNip(dataMasterPegawai);
+            })
+            .catch(err => console.error('Gagal memuat master pegawai:', err));
+    }
+
+    function updateDatalistNama(data) {
+        const datalist = document.getElementById('listNama');
+        if (!datalist) return;
+        
+        datalist.innerHTML = '';
+        const namaUnik = [...new Set(data.map(item => item.nama))];
+        
+        namaUnik.forEach(nama => {
+            if (nama) {
+                const option = document.createElement('option');
+                option.value = nama;
+                datalist.appendChild(option);
+            }
+        });
+    }
+
+    function updateDatalistNip(data) {
+        const datalist = document.getElementById('listNip');
+        if (!datalist) return;
+        
+        datalist.innerHTML = '';
+        const nipUnik = [...new Set(data.map(item => item.nip))];
+        
+        nipUnik.forEach(nip => {
+            if (nip) {
+                const option = document.createElement('option');
+                option.value = nip;
+                datalist.appendChild(option);
+            }
+        });
+    }
+
+    function validasiForm() {
+        const inputNama = namaInput.value.trim().toLowerCase();
+        const inputNip = nipInput.value.trim();
+
+        if (!inputNama) { 
+            alert('Silakan isi Nama Anda!'); 
+            return false; 
+        }
+        if (!bidangInput.value) { 
+            alert('Silakan pilih Bidang / Bagian!'); 
+            return false; 
+        }
+        if (inputNip.length !== 18) { 
+            alert('NIP harus tepat 18 digit angka!'); 
+            return false; 
+        }
+        if (!keteranganInput.value) {
+            alert('Silakan pilih Jenis Aktivasi!');
+            return false;
+        }
+
+        if (!dataMasterPegawai || dataMasterPegawai.length === 0) {
+            alert('Data master pegawai sedang dimuat, silakan tunggu beberapa detik dan coba lagi.');
+            return false;
+        }
+
+        const namaSesuai = dataMasterPegawai.some(item => item.nama.trim().toLowerCase() === inputNama);
+        const nipSesuai = dataMasterPegawai.some(item => item.nip.trim() === inputNip);
+
+        if (!namaSesuai || !nipSesuai) {
+            alert('Nama atau NIP tidak terdaftar.');
+            return false;
+        }
+
+        const sudahaktivasi = dataUserGlobal.some(item => String(item.nip).trim() === inputNip);
+        if (sudahaktivasi) {
+            alert('NIP telah ada di Daftar Yang Telah Aktivasi');
+            return false;
+        }
+
+        return true;
+    }
+
+    function kirimData() {
+        if (!validasiForm()) return;
+
+        const statusDiv = document.getElementById('statusPesan');
+        statusDiv.style.color = 'blue';
+        statusDiv.innerText = 'Menyimpan data...';
+        document.getElementById('btnSimpan').disabled = true;
+
+        const finalKeterangan = `${keteranganInput.value} - ${TARGET_LINK}`;
+
+        const payload = {
+            nama: namaInput.value,
+            bidang: bidangInput.value,
+            nip: nipInput.value,
+            keterangan: finalKeterangan,
+            foto: "", 
+            tanggal: new Date().toLocaleString('id-ID'),
+            lokasi: ""
+        };
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(() => {
+            statusDiv.style.color = 'green';
+            statusDiv.innerText = 'Data berhasil disimpan!';
+            document.getElementById('btnSimpan').disabled = false;
+            
+            // Reset pilihan jenis aktivasi setelah sukses
+            keteranganInput.value = '';
+
+            setTimeout(() => {
+                statusDiv.innerText = '';
+                muatDataUser();
+            }, 2000);
+        })
+        .catch(err => {
+            statusDiv.style.color = 'red';
+            statusDiv.innerText = 'Gagal menyimpan data: ' + err.message;
+            document.getElementById('btnSimpan').disabled = false;
+        });
+    }
+
+    function muatDataUser() {
+        const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
+
+        fetch(url)
+            .then(res => res.text())
+            .then(rep => {
+                const jsonString = rep.substring(47, rep.length - 2);
+                const data = JSON.parse(jsonString);
+                
+                const rows = data.table.rows;
+                dataUserGlobal = [];
+
+                const targetRows = rows.slice(1);
+
+                targetRows.forEach(row => {
+                    if(row.c) {
+                        let nama = row.c[0] ? String(row.c[0].v) : '';
+                        let bidang = row.c[1] ? String(row.c[1].v) : '';
+                        let nip = row.c[2] ? String(row.c[2].v) : '';
+
+                        if (nama.startsWith("'")) nama = nama.substring(1);
+                        if (bidang.startsWith("'")) bidang = bidang.substring(1);
+                        if (nip.startsWith("'")) nip = nip.substring(1);
+
+                        if (nama || nip) {
+                            dataUserGlobal.push({ nama, bidang, nip });
+                        }
+                    }
+                });
+
+                dataUserGlobal.reverse();
+
+                hitungStatistikBidang(dataUserGlobal);
+                tampilkanTabel(dataUserGlobal);
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="4" style="text-align:center;">Gagal memuat data.</td></tr>';
+            });
+    }
+
+    function hitungStatistikBidang(data) {
+        const hitungan = { Audit: 0, Fasilitas: 0, KC: 0, KI: 0, P2: 0, Umum: 0 };
+
+        data.forEach(item => {
+            if (hitungan.hasOwnProperty(item.bidang)) {
+                hitungan[item.bidang]++;
+            }
+        });
+
+        Object.keys(hitungan).forEach(key => {
+            const el = document.getElementById(`stat-${key}`);
+            if (el) el.innerText = hitungan[key];
+        });
+    }
+
+    function tampilkanTabel(data) {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada data ditemukan.</td></tr>';
+            return;
+        }
+
+        data.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${item.nama}</td>
+                <td>${item.bidang || '-'}</td>
+                <td>${item.nip}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function calculateSimilarity(str1, str2) {
+        const s1 = str1.toLowerCase();
+        const s2 = str2.toLowerCase();
+        if (s1.includes(s2) || s2.includes(s1)) return 1;
+
+        const track = Array(s2.length + 1).fill(null).map(() => Array(s1.length + 1).fill(null));
+        for (let i = 0; i <= s1.length; i += 1) track[0][i] = i;
+        for (let j = 0; j <= s2.length; j += 1) track[j][0] = j;
+
+        for (let j = 1; j <= s2.length; j += 1) {
+            for (let i = 1; i <= s1.length; i += 1) {
+                const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                track[j][i] = Math.min(
+                    track[j][i - 1] + 1,
+                    track[j - 1][i] + 1,
+                    track[j - 1][i - 1] + indicator
+                );
+            }
+        }
+        const distance = track[s2.length][s1.length];
+        const maxLength = Math.max(s1.length, s2.length);
+        return maxLength === 0 ? 1 : (maxLength - distance) / maxLength;
+    }
+
+    function filterData() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) {
+            tampilkanTabel(dataUserGlobal);
+            return;
+        }
+
+        const filtered = dataUserGlobal.filter(item => {
+            const simNama = calculateSimilarity(item.nama, query);
+            const simNip = calculateSimilarity(item.nip, query);
+            
+            return simNama >= 0.6 || simNip >= 0.6;
+        });
+
+        tampilkanTabel(filtered);
+    }
+</script>
+
+</body>
+</html>
