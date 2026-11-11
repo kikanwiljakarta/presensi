@@ -31,6 +31,9 @@
         video, canvas, #fotoPreview { width: 100%; max-height: 250px; border-radius: 6px; border: 1px solid #ccc; background: #000; object-fit: cover; }
         #canvasOutput { display: none; }
 
+        /* Permission Notice Box */
+        #permissionNotice { background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 6px; border: 1px solid #ffeeba; text-align: left; margin-bottom: 15px; font-weight: bold; }
+
         /* Snackbar */
         #snackbar { visibility: hidden; min-width: 280px; max-width: 90%; background: #dc3545; color: #fff; text-align: center; border-radius: 8px; padding: 14px 18px; position: fixed; z-index: 99999; left: 50%; bottom: 25px; transform: translateX(-50%); font-size: 14px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,.25); }
         #snackbar.show { visibility: visible; animation: fadein .3s, fadeout .5s 3s; }
@@ -43,39 +46,48 @@
 <div class="container">
     <h2>Buku Tamu Kanwil Bea Cukai Jakarta</h2>
 
-    <div class="form-group">
-        <label for="nama">Nama Lengkap</label>
-        <input type="text" id="nama" placeholder="Masukkan nama lengkap">
+    <!-- Pemberitahuan Izin Kamera -->
+    <div id="permissionNotice">
+        Mohon berikan izin terlebih dahulu untuk mengakses kamera dengan meng-klik <b>ALLOW</b> atau <b>BERI IZIN</b> pada peramban (browser) Anda.
+		<br><br>Refresh kembali halaman ini dengan menarik layar ke bawah
     </div>
 
-    <div class="form-group">
-        <label for="perusahaan">Asal / Perusahaan</label>
-        <input type="text" id="perusahaan" placeholder="Masukkan asal instansi / perusahaan">
+    <!-- Bagian Form Utama (Disembunyikan sebelum izin diberikan) -->
+    <div id="mainFormContent" style="display: none;">
+        <div class="form-group">
+            <label for="nama">Nama Lengkap</label>
+            <input type="text" id="nama" placeholder="Masukkan nama lengkap">
+        </div>
+
+        <div class="form-group">
+            <label for="perusahaan">Asal / Perusahaan</label>
+            <input type="text" id="perusahaan" placeholder="Masukkan asal instansi / perusahaan">
+        </div>
+
+        <div class="form-group">
+            <label for="bertemu">Akan Bertemu dengan</label>
+            <input type="text" id="bertemu" placeholder="Nama pegawai / bagian yang dituju">
+        </div>
+
+        <div class="form-group">
+            <label for="keterangan">Keperluan / Keterangan</label>
+            <input type="text" id="keterangan" placeholder="Masukkan keperluan kunjungan">
+        </div>
+
+        <button type="button" class="btn" id="btnSimpan" onclick="kirimData()">SIMPAN DATA</button>
     </div>
 
-    <div class="form-group">
-        <label for="bertemu">Akan Bertemu dengan</label>
-        <input type="text" id="bertemu" placeholder="Nama pegawai / bagian yang dituju">
-    </div>
-
-    <div class="form-group">
-        <label for="keterangan">Keperluan / Keterangan</label>
-        <input type="text" id="keterangan" placeholder="Masukkan keperluan kunjungan">
-    </div>
-
-    <!-- Kolom Selfie / Kamera -->
-    <div class="form-group">
-        <label>Foto Selfie Tamu</label>
+    <!-- Kolom Selfie / Kamera (Selalu Tampil untuk Memancing Pop-up Izin) -->
+    <div class="form-group" id="cameraSection">
+        <label>Verifikasi Kamera / Foto Selfie</label>
         <div class="camera-container">
             <video id="video" autoplay playsinline></video>
             <canvas id="canvasOutput"></canvas>
             <img id="fotoPreview" style="display:none;" alt="Pratinjau Foto">
-            <button type="button" class="btn btn-secondary" id="btnAmbilFoto" onclick="ambilFoto()">Ambil Foto Selfie</button>
+            <button type="button" class="btn btn-secondary" id="btnAmbilFoto" onclick="ambilFoto()" style="display:none;">Ambil Foto Selfie</button>
             <button type="button" class="btn btn-secondary" id="btnUlangFoto" onclick="ulangFoto()" style="display:none; background-color: #ffc107; color: #000;">Ulangi Foto</button>
         </div>
     </div>
-
-    <button type="button" class="btn" id="btnSimpan" onclick="kirimData()">SIMPAN DATA</button>
 
     <div class="status" id="statusPesan"></div>
 
@@ -115,6 +127,8 @@
     const fotoPreview = document.getElementById('fotoPreview');
     const btnAmbilFoto = document.getElementById('btnAmbilFoto');
     const btnUlangFoto = document.getElementById('btnUlangFoto');
+    const permissionNotice = document.getElementById('permissionNotice');
+    const mainFormContent = document.getElementById('mainFormContent');
 
     let base64Foto = '';
     let isModelLoaded = false;
@@ -144,12 +158,35 @@
 	keteranganInput.addEventListener('input', () => localStorage.setItem('saved_keterangan', keteranganInput.value));
     
 	function initKamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            tampilkanSnackbar('Peramban Anda tidak mendukung akses kamera.');
+            return;
+        }
+
         navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 480 } })
             .then(stream => {
                 video.srcObject = stream;
+                permissionNotice.style.display = 'none';
+                mainFormContent.style.display = 'block';
+                btnAmbilFoto.style.display = 'block';
             })
             .catch(err => {
-                tampilkanSnackbar('Gagal mengakses kamera: ' + err.message);
+                // JIKA DIBLOKIR / NEVER ALLOW: Tampilkan instruksi khusus cara reset ikon gembok
+                permissionNotice.style.display = 'block';
+                mainFormContent.style.display = 'none';
+                btnAmbilFoto.style.display = 'none';
+                
+                // Ubah teks pemberitahuan secara dinamis agar pengguna paham
+                permissionNotice.innerHTML = `
+                    <b>Akses Kamera Diblokir!</b><br>
+                    1. Klik <i>titik tiga</i> pilih <i>setting / setelan</i>. <br>
+                    2. Ketik di bagian pencarian (gambar kaca pembesar): <b>"Kamera" / "Camera"</b><br>
+					3. Pilih <b>gambar Kamera tanpa <del>coret</del></b> <br>
+					4. Kembali lagi ke halaman awal, tarik layar ke bawah.<br>
+					5. Pilih <b>Izinkan / Allow</b>
+                `;
+                
+                tampilkanSnackbar('Akses kamera diblokir oleh setelan browser.');
             });
     }
 
@@ -235,7 +272,7 @@
             perusahaan: perusahaanInput.value,
             bertemu: bertemuInput.value,
             keterangan: keteranganInput.value,
-            foto: base64Foto, // Base64 foto selfie untuk disimpan ke Drive dan link-nya ditaruh di Kolom F Sheet
+            foto: base64Foto,
             tanggal: new Date().toLocaleString('id-ID')
         };
 
