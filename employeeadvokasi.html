@@ -450,22 +450,23 @@
         return maxLength === 0 ? 1 : (maxLength - distance) / maxLength;
     }
 
-    function filterData() {
-        const query = document.getElementById('searchInput').value.trim();
-        if (!query) {
-            tampilkanTabel(dataUserGlobal);
-            return;
-        }
+	function filterData() {
+		const query = document.getElementById('searchInput').value.trim();
+		if (!query) {
+			tampilkanTabel(dataUserGlobal);
+			return;
+		}
 
-        const filtered = dataUserGlobal.filter(item => {
-            const simNama = calculateSimilarity(item.nama, query);
-            const simNip = calculateSimilarity(item.nip, query);
-            
-            return simNama >= 0.6 || simNip >= 0.6;
-        });
+		const filtered = dataUserGlobal.filter(item => {
+			const simNama = calculateSimilarity(item.nama, query);
+			const simNip = calculateSimilarity(item.nip, query);
+			const simBidang = calculateSimilarity(item.bidang || '', query); // Menambahkan pengecekan kemiripan pada bidang
+			
+			return simNama >= 0.6 || simNip >= 0.6 || simBidang >= 0.6;
+		});
 
-        tampilkanTabel(filtered);
-    }
+		tampilkanTabel(filtered);
+	}
 </script>
 
 </body>
