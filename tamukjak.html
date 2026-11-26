@@ -134,11 +134,38 @@
     let isModelLoaded = false;
     let dataUserGlobal = [];
 
+    function toTitleCase(str) {
+        return str
+            .toLowerCase()
+            .replace(/(^|[\s\-\/\(\.])([a-zà-ÿ])/g, (_, prefix, char) => prefix + char.toUpperCase());
+    }
+
+    function toSentenceCase(str) {
+        return str.replace(/(^\s*|[.!?]\s+)([a-zà-ÿ])/g, (_, prefix, char) => prefix + char.toUpperCase());
+    }
+
+    function terapkanFormatter(inputEl, formatterFn, storageKey) {
+        inputEl.addEventListener('input', () => {
+            const start = inputEl.selectionStart;
+            const end = inputEl.selectionEnd;
+            const formatted = formatterFn(inputEl.value);
+
+            if (inputEl.value !== formatted) {
+                inputEl.value = formatted;
+                if (start !== null && end !== null) {
+                    inputEl.setSelectionRange(start, end);
+                }
+            }
+
+            localStorage.setItem(storageKey, inputEl.value);
+        });
+    }
+
     window.onload = async function() {
-        if (localStorage.getItem('saved_nama')) namaInput.value = localStorage.getItem('saved_nama');
-        if (localStorage.getItem('saved_perusahaan')) perusahaanInput.value = localStorage.getItem('saved_perusahaan');
-        if (localStorage.getItem('saved_bertemu')) bertemuInput.value = localStorage.getItem('saved_bertemu');
-		if (localStorage.getItem('saved_keterangan')) keteranganInput.value = localStorage.getItem('saved_keterangan'); 
+        if (localStorage.getItem('saved_nama')) namaInput.value = toTitleCase(localStorage.getItem('saved_nama'));
+        if (localStorage.getItem('saved_perusahaan')) perusahaanInput.value = toTitleCase(localStorage.getItem('saved_perusahaan'));
+        if (localStorage.getItem('saved_bertemu')) bertemuInput.value = toTitleCase(localStorage.getItem('saved_bertemu'));
+        if (localStorage.getItem('saved_keterangan')) keteranganInput.value = toSentenceCase(localStorage.getItem('saved_keterangan')); 
 		
         muatDataUser();
         initKamera();
@@ -152,10 +179,10 @@
         }
     };
 
-    namaInput.addEventListener('input', () => localStorage.setItem('saved_nama', namaInput.value));
-    perusahaanInput.addEventListener('input', () => localStorage.setItem('saved_perusahaan', perusahaanInput.value));
-    bertemuInput.addEventListener('input', () => localStorage.setItem('saved_bertemu', bertemuInput.value));
-	keteranganInput.addEventListener('input', () => localStorage.setItem('saved_keterangan', keteranganInput.value));
+    terapkanFormatter(namaInput, toTitleCase, 'saved_nama');
+    terapkanFormatter(perusahaanInput, toTitleCase, 'saved_perusahaan');
+    terapkanFormatter(bertemuInput, toTitleCase, 'saved_bertemu');
+    terapkanFormatter(keteranganInput, toSentenceCase, 'saved_keterangan');
     
 	function initKamera() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -270,10 +297,10 @@
         btnSimpan.disabled = true;
 
         const payload = {
-            nama: namaInput.value,
-            perusahaan: perusahaanInput.value,
-            bertemu: bertemuInput.value,
-            keterangan: keteranganInput.value,
+            nama: toTitleCase(namaInput.value.trim()),
+            perusahaan: toTitleCase(perusahaanInput.value.trim()),
+            bertemu: toTitleCase(bertemuInput.value.trim()),
+            keterangan: toSentenceCase(keteranganInput.value.trim()),
             foto: base64Foto,
             tanggal: new Date().toLocaleString('id-ID')
         };
