@@ -99,7 +99,7 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width:15%;">No</th>
+                    <th style="width:15%; text-align:center;">No</th>
                     <th>Nama</th>
                 </tr>
             </thead>
@@ -714,7 +714,7 @@
 
         data.forEach(item => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${item.no}</td><td>${item.nama}</td>`;
+            tr.innerHTML = `<td style="text-align:center;">${item.no}</td><td>${item.nama}</td>`;
             tbody.appendChild(tr);
         });
     }
